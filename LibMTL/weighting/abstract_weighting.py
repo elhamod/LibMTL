@@ -21,30 +21,43 @@ class AbsWeighting(nn.Module):
             self.grad_index.append(param.data.numel())
         self.grad_dim = sum(self.grad_index)
 
-    def _grad2vec(self):
-        grad = torch.zeros(self.grad_dim)
+    def _grad2vec(self, flatten=True):
+        if flatten:
+            grad = torch.zeros(self.grad_dim)
+        else:
+            grad = []
         count = 0
         for param in self.get_share_params():
             if param.grad is not None:
-                beg = 0 if count == 0 else sum(self.grad_index[:count])
-                end = sum(self.grad_index[:(count+1)])
-                grad[beg:end] = param.grad.data.view(-1)
+                if flatten:
+                    beg = 0 if count == 0 else sum(self.grad_index[:count])
+                    end = sum(self.grad_index[:(count+1)])
+                    grad[beg:end] = param.grad.data.view(-1)
+                else:
+                    grad.append(param.grad.data.view(-1).detach().clone())
             count += 1
         return grad
 
-    def _compute_grad(self, losses, mode, rep_grad=False):
+    def _compute_grad(self, losses, mode, rep_grad=False, flatten=True):
         '''
         mode: backward, autograd
         '''
         if not rep_grad:
-            grads = torch.zeros(self.task_num, self.grad_dim).to(self.device)
+            if flatten:
+                grads = torch.zeros(self.task_num, self.grad_dim).to(self.device)
+            else:
+                grads = [0]* self.task_num
             for tn in range(self.task_num):
                 if mode == 'backward':
-                    losses[tn].backward(retain_graph=True) if (tn+1)!=self.task_num else losses[tn].backward()
-                    grads[tn] = self._grad2vec()
+                    losses[tn].backward(retain_graph=True) #if (tn+1)!=self.task_num else losses[tn].backward() #TODO: double check if we really dont need this.
+                    g = self._grad2vec(flatten)
+                    grads[tn] = g
                 elif mode == 'autograd':
                     grad = list(torch.autograd.grad(losses[tn], self.get_share_params(), retain_graph=True))
-                    grads[tn] = torch.cat([g.view(-1) for g in grad])
+                    if flatten:
+                        grads[tn] = torch.cat([g.view(-1) for g in grad])
+                    else:
+                        grads[tn] = grad
                 else:
                     raise ValueError('No support {} mode for gradient computation')
                 self.zero_grad_share_params()
@@ -68,7 +81,7 @@ class AbsWeighting(nn.Module):
                 param.grad.data = new_grads[beg:end].contiguous().view(param.data.size()).data.clone()
             count += 1
             
-    def _get_grads(self, losses, mode='backward'):
+    def _get_grads(self, losses, mode='backward', flatten=True):
         r"""This function is used to return the gradients of representations or shared parameters.
 
         If ``rep_grad`` is ``True``, it returns a list with two elements. The first element is \
@@ -80,7 +93,7 @@ class AbsWeighting(nn.Module):
         of [task_num, -1], which means the gradient of each task is resized as a vector.
         """
         if self.rep_grad:
-            per_grads = self._compute_grad(losses, mode, rep_grad=True)
+            per_grads = self._compute_grad(losses, mode, rep_grad=True, flatten=flatten)
             if not isinstance(self.rep, dict):
                 grads = per_grads.reshape(self.task_num, self.rep.size()[0], -1).sum(1)
             else:
@@ -91,7 +104,7 @@ class AbsWeighting(nn.Module):
             return [per_grads, grads]
         else:
             self._compute_grad_dim()
-            grads = self._compute_grad(losses, mode)
+            grads = self._compute_grad(losses, mode, flatten=flatten)
             return grads
         
     def _backward_new_grads(self, batch_weight, per_grads=None, grads=None):

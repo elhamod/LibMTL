@@ -1,3 +1,4 @@
+#from .dot import make_dot
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -19,13 +20,13 @@ class GradNorm(AbsWeighting):
         super(GradNorm, self).__init__()
         
     def init_param(self):
-        self.loss_scale = nn.Parameter(torch.tensor([1.0]*self.task_num, device=self.device))
+        self.loss_scale = nn.Parameter(torch.tensor([1.0]*self.task_num, device=self.device)) # w_i(t)
         
     def backward(self, losses, **kwargs):
         alpha = kwargs['alpha']
         if self.epoch >= 1:
             loss_scale = self.task_num * F.softmax(self.loss_scale, dim=-1)
-            grads = self._get_grads(losses, mode='backward')
+            grads = self._get_grads(losses, mode='backward') # wrt W is wrt to the model itself
             if self.rep_grad:
                 per_grads, grads = grads[0], grads[1]
                 
@@ -35,7 +36,7 @@ class GradNorm(AbsWeighting):
             r_i = L_i/L_i.mean()
             constant_term = (G*(r_i**alpha)).detach()
             L_grad = (G_per_loss-constant_term).abs().sum(0)
-            L_grad.backward()
+            L_grad.backward() # update things that depend on DEL(w_i) Lgrad
             loss_weight = loss_scale.detach().clone()
             
             if self.rep_grad:

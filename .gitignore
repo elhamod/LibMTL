@@ -1,0 +1,5 @@
+LibMTL/__pycache__/**
+LibMTL/architecture/__pycache__/**
+LibMTL.egg-info/**
+LibMTL/weighting/__pycache__/**
+LibMTL/model/__pycache__/**

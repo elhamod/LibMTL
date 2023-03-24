@@ -12,6 +12,8 @@ from LibMTL.weighting.IMTL import IMTL
 from LibMTL.weighting.CAGrad import CAGrad
 from LibMTL.weighting.Nash_MTL import Nash_MTL
 from LibMTL.weighting.RLW import RLW
+from LibMTL.weighting.CW import CW
+from LibMTL.weighting.LRannealing import LRannealing
 
 __all__ = ['AbsWeighting',
            'EW', 
@@ -26,4 +28,6 @@ __all__ = ['AbsWeighting',
            'IMTL',
            'CAGrad',
            'Nash_MTL',
-           'RLW']
+           'RLW',
+           'CW',
+           'LRannealing']

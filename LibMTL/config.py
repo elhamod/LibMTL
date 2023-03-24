@@ -1,6 +1,7 @@
 import argparse
 import numpy as np
 import torch
+import warnings
 
 _parser = argparse.ArgumentParser(description='Configuration for LibMTL')
 # general
@@ -66,17 +67,17 @@ def prepare_args(params):
     """
     kwargs = {'weight_args': {}, 'arch_args': {}}
     if params.weighting in ['EW', 'UW', 'GradNorm', 'GLS', 'RLW', 'MGDA', 'IMTL',
-                            'PCGrad', 'GradVac', 'CAGrad', 'GradDrop', 'DWA', 'Nash_MTL']:
+                            'PCGrad', 'GradVac', 'CAGrad', 'GradDrop', 'DWA', 'Nash_MTL', 'CW', 'LRannealing']:
         if params.weighting in ['DWA']:
             if params.T is not None:
                 kwargs['weight_args']['T'] = params.T
             else:
                 raise ValueError('DWA needs keywaord T')
-        elif params.weighting in ['GradNorm']:
+        elif params.weighting in ['GradNorm', 'LRannealing']:
             if params.alpha is not None:
                 kwargs['weight_args']['alpha'] = params.alpha
             else:
-                raise ValueError('GradNorm needs keywaord alpha')
+                raise ValueError('alpha keyword needed')
         elif params.weighting in ['MGDA']:
             if params.mgda_gn is not None:
                 if params.mgda_gn in ['none', 'l2', 'loss', 'loss+']:
@@ -108,6 +109,12 @@ def prepare_args(params):
                 kwargs['weight_args']['max_norm'] = params.max_norm
             else:
                 raise ValueError('Nash_MTL needs update_weights_every, optim_niter, and max_norm')
+        elif params.weighting in ['CW']:
+            if params.weights is not None:
+                kwargs['weight_args']['weights'] = params.weights
+            else:
+                warnings.warn("params.weights not given for CW. Default = [1, ...]")
+                kwargs['weight_args']['weights'] = None
     else:
         raise ValueError('No support weighting method {}'.format(params.weighting)) 
         
@@ -118,8 +125,8 @@ def prepare_args(params):
         if params.arch in ['DSelect_k']:
             kwargs['arch_args']['kgamma'] = params.kgamma
             kwargs['arch_args']['num_nonzeros'] = params.num_nonzeros
-    else:
-        raise ValueError('No support architecture method {}'.format(params.arch)) 
+    # else:
+    #     raise ValueError('No support architecture method {}'.format(params.arch)) 
         
     if params.optim in ['adam', 'sgd', 'adagrad', 'rmsprop']:
         if params.optim == 'adam':
