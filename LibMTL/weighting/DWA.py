@@ -20,7 +20,7 @@ class DWA(AbsWeighting):
         
     def backward(self, losses, **kwargs):
         T = kwargs['T']
-        if self.epoch > 1:
+        if self.epoch > 1: #NOTE: make sure the model implements and increases self.epoch every epoch!!!!
             w_i = torch.Tensor(self.train_loss_buffer[:,self.epoch-1]/self.train_loss_buffer[:,self.epoch-2]).to(self.device)
             batch_weight = self.task_num*F.softmax(w_i/T, dim=-1)
         else:

@@ -5,7 +5,7 @@ import warnings
 
 _parser = argparse.ArgumentParser(description='Configuration for LibMTL')
 # general
-_parser.add_argument('--seed', type=int, default=0, help='random seed')
+_parser.add_argument('--seed', type=int, default=1234, help='random seed')
 _parser.add_argument('--gpu_id', default='0', type=str, help='gpu_id') 
 _parser.add_argument('--weighting', type=str, default='EW',
     help='loss weighing strategies, option: EW, UW, GradNorm, GLS, RLW, \
